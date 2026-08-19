@@ -5,6 +5,7 @@
 #include<iterator>
 #include<unordered_map>
 #include<utility>
+#include<algorithm>
 const int64_t scale =1e6;
 
 class Order{
@@ -31,9 +32,9 @@ public:
 
     }
 
-    bool canOrder(int quantity) const {
+    bool canOrder(int quantity)  {
         if(quantity<=this->remaining_quantity){
-          
+            remaining_quantity-=quantity;
             return true;
         }
         else return false;
@@ -60,7 +61,12 @@ public:
     }
 
     void printOrder() const {
-        std::cout<<"TYPE: "<<this->type<<std::endl;
+        std::string type;
+        if(this->type){
+            type="BID";
+        }
+        else type="ASK";
+        std::cout<<"TYPE: "<<type<<std::endl;
         std::cout<<"Price: "<<(this->price)/scale<<std::endl;
         std::cout<<"Quantity: "<<this->remaining_quantity<<std::endl;
     }
@@ -155,6 +161,72 @@ for(const auto& it: askBook){
     }
     }
 
+    void placeOrder(Order& order){
+            bool type= order.getType();
+            int64_t price=order.getPrice();
+            if(type) {  //buy
+                std::map<int64_t,std::list<Order>>::iterator it=askBook.begin();
+                while(it!=askBook.end() && price>=it->first && order.getQty() >0 ){
+                        std::list<Order>::iterator it2=(it->second).begin();
+                       
+                        while(it2!=(it->second).end() && order.getQty()>0){
+                        int qty_traded=std::min(order.getQty() ,it2->getQty() );
+                        it2->canOrder(qty_traded);
+                        order.canOrder(qty_traded);
+                        if(it2->getQty()<=0){
+                            std::string suid=it2->getUID();
+                            uid_lookup.erase(suid);
+                         it2=(it->second).erase(it2);
+                         continue;
+                        }
+                        it2++;
+                    }
+                    if(it->second.empty()){
+                        it=askBook.erase(it);
+                        continue;
+                    }
+                    it++;
+                }
+           if(order.getQty()>0){
+            this->add(order);
+           }
+
+            }
+            else{
+                std::map<int64_t,std::list<Order>>::iterator it=bidBook.begin();
+
+  while(it!=bidBook.end() && price<=it->first && order.getQty() >0 ){
+                        std::list<Order>::iterator it2=(it->second).begin();
+                       
+                        while(it2!=(it->second).end() && order.getQty()>0){
+                        int qty_traded=std::min(order.getQty() ,it2->getQty() );
+                        it2->canOrder(qty_traded);
+                        order.canOrder(qty_traded);
+                        if(it2->getQty()<=0){
+                               std::string buid=it2->getUID();
+                            uid_lookup.erase(buid);
+                         it2=(it->second).erase(it2);
+                         continue;
+                        }
+                        it2++;
+                    }
+                    if(it->second.empty()){
+                        it=bidBook.erase(it);
+                        continue;
+                    }
+                    it++;
+                }
+           if(order.getQty()>0){
+            this->add(order);
+           }
+
+                
+
+
+
+            }
+    }
+
 };
 
 int main(){
@@ -176,19 +248,19 @@ int main(){
     std::cout << "----- Before cancel -----" << std::endl;
     book.printBook();
 
-    // Cancel one of the two orders sharing a price level.
+
     bool result1 = book.cancel("bid_100_a");
     std::cout << "\ncancel(bid_100_a) returned: " << result1 << std::endl;
 
-    // Cancel the ONLY order at its price level - should also remove the empty level.
+
     bool result2 = book.cancel("ask_101");
     std::cout << "cancel(ask_101) returned: " << result2 << std::endl;
 
-    // Cancel something that doesn't exist - should fail gracefully.
+
     bool result3 = book.cancel("does_not_exist");
     std::cout << "cancel(does_not_exist) returned: " << result3 << std::endl;
 
-    // Try cancelling the same uid twice - second call should fail, not crash.
+    
     bool result4 = book.cancel("bid_100_a");
     std::cout << "cancel(bid_100_a) AGAIN returned: " << result4 << std::endl;
 
