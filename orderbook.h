@@ -1,85 +1,17 @@
+#ifndef ORDERBOOK_H
+#define ORDERBOOK_H
+
 #include<iostream>
-#include<string>
 #include<map>
-#include<list>
-#include<iterator>
 #include<unordered_map>
 #include<utility>
-#include<algorithm>
-const int64_t scale =1e6;
-
-class Order{
-private:
-    std::string uid;
-    bool type; //0 for sell and 1 for buy
-    int64_t price;
-    int original_quantity;
-    int remaining_quantity;
-     int64_t current_seq;
-  
-public:
-   static int64_t counter;
-
-    Order(std::string uid, bool type,double price,int quantity){
-        this->uid=uid;
-        this->type=type;
-        this->price=price*scale;
-        this->original_quantity=quantity;
-        this->remaining_quantity=quantity;
-         
-        counter++;
-        this->current_seq=counter;
-
-    }
-
-    bool canOrder(int quantity)  {
-        if(quantity<=this->remaining_quantity){
-            remaining_quantity-=quantity;
-            return true;
-        }
-        else return false;
-
-    }
-
-    int64_t getPrice() const {
-        return this->price;
-    }
-    int getQty() const {
-        return this->remaining_quantity;
-    }
-
-    bool getType() const {
-        return this->type;
-    }
-    
-    std::string getUID() const {
-        return this->uid;
-    }
-
-    int64_t getSequence() const{
-        return this->current_seq;
-    }
-
-    void printOrder() const {
-        std::string type;
-        if(this->type){
-            type="BID";
-        }
-        else type="ASK";
-        std::cout<<"TYPE: "<<type<<std::endl;
-        std::cout<<"Price: "<<(this->price)/scale<<std::endl;
-        std::cout<<"Quantity: "<<this->remaining_quantity<<std::endl;
-    }
-
-
-    };
-
-
-
-int64_t Order::counter =0;
-
-
-
+#include<list>
+#include<string>
+#include<cstdint>
+#include<iterator>
+#include<vector>
+#include "order.h"
+#include "trade.h"
 class OrderBook{
 private:
 std::map<int64_t, std::list<Order>> askBook;  
@@ -173,6 +105,14 @@ for(const auto& it: askBook){
                         int qty_traded=std::min(order.getQty() ,it2->getQty() );
                         it2->canOrder(qty_traded);
                         order.canOrder(qty_traded);
+
+                        Trade t;
+                        t.price=(double)it->first/scale;
+                        t.qty=qty_traded;
+                        t.sid=it2->getUID();
+                        t.bid=order.getUID();
+                         Tradebook.push_back(t);
+
                         if(it2->getQty()<=0){
                             std::string suid=it2->getUID();
                             uid_lookup.erase(suid);
@@ -202,6 +142,15 @@ for(const auto& it: askBook){
                         int qty_traded=std::min(order.getQty() ,it2->getQty() );
                         it2->canOrder(qty_traded);
                         order.canOrder(qty_traded);
+
+                        Trade t;
+                        t.price=(double)(it->first)/scale;
+                        t.qty=qty_traded;
+                        t.bid=it2->getUID();
+                        t.sid=order.getUID();
+                        Tradebook.push_back(t);
+
+
                         if(it2->getQty()<=0){
                                std::string buid=it2->getUID();
                             uid_lookup.erase(buid);
@@ -229,43 +178,5 @@ for(const auto& it: askBook){
 
 };
 
-int main(){
-    OrderBook book;
 
-    Order b1("bid_100_a", 1, 100.00, 10);
-    Order b2("bid_100_b", 1, 100.00, 5);
-    Order b3("bid_101",   1, 101.00, 7);
-
-    Order a1("ask_102", 0, 102.00, 8);
-    Order a2("ask_101", 0, 101.00, 3);
-
-    book.add(b1);
-    book.add(b2);
-    book.add(b3);
-    book.add(a1);
-    book.add(a2);
-
-    std::cout << "----- Before cancel -----" << std::endl;
-    book.printBook();
-
-
-    bool result1 = book.cancel("bid_100_a");
-    std::cout << "\ncancel(bid_100_a) returned: " << result1 << std::endl;
-
-
-    bool result2 = book.cancel("ask_101");
-    std::cout << "cancel(ask_101) returned: " << result2 << std::endl;
-
-
-    bool result3 = book.cancel("does_not_exist");
-    std::cout << "cancel(does_not_exist) returned: " << result3 << std::endl;
-
-    
-    bool result4 = book.cancel("bid_100_a");
-    std::cout << "cancel(bid_100_a) AGAIN returned: " << result4 << std::endl;
-
-    std::cout << "\n----- After cancels -----" << std::endl;
-    book.printBook();
-
-    return 0;
-}
+#endif
